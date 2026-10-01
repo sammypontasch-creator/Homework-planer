@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Klassenbuch</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root,:root[data-theme="grau"]{--bg:#1E2023;--card:#2A2D31;--ink:#E9EAEC;--mute:#9BA0A8;--line:#3B3F45;--mine:#3A4A5F;--main:#7AA2FF;--mainink:#101418;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root[data-theme="hell"]{--bg:#F1F3F6;--card:#fff;--ink:#1E2430;--mute:#66707F;--line:#DDE1E8;--mine:#D8E4FF}
+:root[data-theme="schwarz"]{--bg:#0C0C0D;--card:#17181A;--ink:#EDEDED;--mute:#8C9097;--line:#2A2C2F;--mine:#26364D}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Outfit,system-ui,sans-serif}
+main{max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:2rem;font-weight:800;margin:24px 0 4px}
+h2{font-size:1.2rem;margin:0 0 12px}
+p.sub,.who,.due,small{color:var(--mute)}p.sub{margin:0 0 20px}.who,.due{font-size:.85rem}
+input:not([type=checkbox]){width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;margin-bottom:10px}
+input:focus-visible,button:focus-visible{outline:3px solid var(--main);outline-offset:1px}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:12px 16px;cursor:pointer;background:var(--main);color:var(--mainink)}
+button.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+button.link{background:none;color:var(--main);padding:8px 0}
+button.full{width:100%;margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.cls{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);margin-bottom:10px;padding:16px}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tabs button{flex:1;background:var(--card);color:var(--ink);border:1.5px solid var(--line);padding:12px 4px}
+.tabs button.on{background:var(--main);color:var(--mainink);border-color:var(--main)}
+.hw{display:flex;gap:12px;align-items:flex-start}
+.hw input{width:22px;height:22px;margin:2px 0 0;flex:none}
+.hw.done .t{text-decoration:line-through;color:var(--mute)}
+.fach{font-weight:800}
+.chat{display:flex;flex-direction:column;gap:8px;min-height:220px;max-height:50vh;overflow-y:auto;padding:4px 0 12px}
+.msg{max-width:80%;padding:8px 12px;border-radius:14px;background:var(--card);border:1px solid var(--line);align-self:flex-start}
+.msg.me{align-self:flex-end;background:var(--mine)}
+.msg b{display:block;font-size:.78rem;color:var(--mute)}
+.row{display:flex;gap:8px;align-items:center}.row input{margin:0}
+.empty{color:var(--mute);text-align:center;padding:20px 0}
+.demo{background:#FFC93C;color:#1E2A4A;border-radius:10px;padding:12px;margin-bottom:12px;font-size:.92rem}
+.demo b,.code{font-size:1.6rem;letter-spacing:.2em;display:block}
+.err{color:#FF7A6B;margin:0 0 10px;font-weight:600}.ok{color:#6FD08C;margin:0 0 10px;font-weight:600}
+.opts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.opts button{background:var(--bg);color:var(--ink);border:1.5px solid var(--line)}
+.opts button.on{border-color:var(--main);box-shadow:0 0 0 2px var(--main)}
+.sw{width:40px;height:40px;padding:0;border-radius:50%!important}
+.chk{display:flex;gap:10px;align-items:center;margin-bottom:10px}.chk input{width:20px;height:20px;margin:0}
+.mem{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.tag{font-size:.75rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute);margin-left:6px}
+.ico{padding:8px 12px;font-size:1.1rem}
+#menu{position:fixed;z-index:9;max-height:70vh;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#menu button{display:block;width:100%;text-align:left;background:none;color:var(--ink);border-radius:8px}
+#menu button:hover{background:var(--bg)}#menu button.bad{color:#FF7A6B}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div id="menu" class="hide" style="display:none"></div>
+<script>
+var S={user:null,users:[],classes:[],prefs:{},cur:null,tab:'hw',auth:'login',pend:null,set:false};
+try{var raw=localStorage.getItem('klassenbuch4');if(raw)S=Object.assign(S,JSON.parse(raw))}catch(e){}
+var delAsk=null,err='',ok='',DB=null,CID=null,CH={},PRIVS={};
+function save(){try{localStorage.setItem('klassenbuch4',JSON.stringify({user:S.user,prefs:S.prefs,cur:S.cur,tab:S.tab,auth:S.auth,set:S.set}))}catch(e){}}
+function esc(t){var d=document.createElement('div');d.textContent=t;return d.innerHTML}
+function uid(){return Math.random().toString(36).slice(2,8)}
+function mkcode(){var a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';for(var i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
+function priv(){return{id:'privat',name:'Privat',priv:true,hw:(PRIVS['priv-'+myId()]||{}).hw||[]}}
+function cls(){return S.cur==='privat'?priv():S.classes.find(function(c){return c.id===S.cur})}
+function go(fn){err='';ok='';closeMenu();fn();save();render()}
+function fail(m){err=m;ok='';render()}
+function val(id){return document.getElementById(id).value.trim()}
+function E(){return err?'<p class="err" role="alert">'+esc(err)+'</p>':ok?'<p class="ok">'+esc(ok)+'</p>':''}
+function P(){return Object.assign({theme:'grau',accent:'#7AA2FF',big:false,hideDone:false},S.user?S.prefs[S.user.id]:{})}
+function setPref(k,v){var pr=Object.assign(P(),{[k]:v});go(function(){S.prefs[S.user.id]=pr});if(!S.user.anon&&DB)sha(S.user.email).then(function(h){DB.doc('accounts/'+h).update({prefs:pr})})}
+function apply(){var p=P(),r=document.documentElement;r.setAttribute('data-theme',S.user?p.theme:'grau');r.style.setProperty('--main',S.user?p.accent:'#7AA2FF');document.body.style.fontSize=(S.user&&p.big)?'19px':'16px'}
+function myId(){return S.user.id}
+function mem(c,id){return c.members.find(function(m){return m.id===id})}
+function myRole(c){var m=mem(c,myId());return m?m.role:null}
+function canManage(c,m){var r=myRole(c);return m.id!==myId()&&m.role!=='owner'&&(r==='owner'||(r==='admin'&&m.role==='member'))}
+function visible(){return[priv()].concat(S.classes.filter(function(k){return !!mem(k,myId())}))}
+
+function render(){
+  var a=document.getElementById('app');apply();
+  if(!S.user){
+    var h='<h1>Klassenbuch</h1><p class="sub">Hausaufgaben und Klassenchat an einem Ort.</p>'+(DB?'':'<div class="demo">Speichern und Synchronisieren ist gerade nicht verfügbar. Öffne die Seite in claude.ai und melde dich dort an.</div>');
+    if(S.auth==='verify'){
+      a.innerHTML=h+'<div class="card"><h2>Code eingeben</h2><div class="demo">Demo-Modus: Es wird keine echte E-Mail verschickt. Dein Code für '+esc(S.pend.email)+':<b>'+S.pend.code+'</b></div>'+E()+'<input id="cd" inputmode="numeric" maxlength="6" placeholder="6-stelliger Code"><button class="full" onclick="verify()">Registrierung abschließen</button><button class="ghost full" onclick="go(function(){S.auth=\'register\'})">Zurück</button></div>';
+    }else if(S.auth==='register'){
+      a.innerHTML=h+'<div class="card"><h2>Registrieren</h2>'+E()+'<input id="nm" placeholder="Benutzername" autocomplete="nickname"><input id="em" type="email" placeholder="E-Mail" autocomplete="email"><input id="pw" type="password" placeholder="Passwort (mind. 6 Zeichen)" autocomplete="new-password"><button class="full" onclick="reg()">Code per E-Mail senden</button><button class="link" onclick="go(function(){S.auth=\'login\'})">Schon registriert? Anmelden</button></div>';
+    }else{
+      a.innerHTML=h+'<div class="card"><h2>Anmelden</h2>'+E()+'<input id="em" type="email" placeholder="E-Mail" autocomplete="email"><input id="pw" type="password" placeholder="Passwort" autocomplete="current-password"><button class="full" onclick="login()">Anmelden</button><button class="link" onclick="go(function(){S.auth=\'register\'})">Neu hier? Registrieren</button></div><button class="ghost full" onclick="anon()">Anonym benutzen</button>';
+    }
+    return;
+  }
+  var head='<div class="top"><div><b>'+esc(S.user.name)+'</b><div class="who">'+(S.user.anon?'Anonym':esc(S.user.email))+'</div></div><button class="ghost ico" aria-label="Einstellungen" onclick="go(function(){S.set=true})">⚙</button></div>';
+  if(S.set)return renderSet(a);
+  var c=cls();
+  if(!c||(!c.priv&&!mem(c,myId()))){
+    var list=visible().map(function(k){return '<button class="cls" onclick="openCls(\''+k.id+'\')"><span><b>'+esc(k.name)+'</b><br><small>'+(k.priv?'Nur für dich sichtbar · ':'')+(k.hw||[]).filter(function(h){var s=stateOf();return k.priv?!h.done:!s.done[h.id]&&!s.hidden[h.id]}).length+' offene Hausaufgaben</small></span><span>›</span></button>'}).join('');
+    a.innerHTML=head+'<h2>Deine Klassen</h2>'+list+'<p class="who">Neue Klassen legst du in den Einstellungen an.</p>';
+    return;
+  }
+  var body='',p=P();
+  var bn=!c.priv&&((mem(c,myId())||{}).bannedUntil>Date.now());
+  if(bn){body='<p class="empty">Du bist in dieser Klasse bis '+new Date(mem(c,myId()).bannedUntil).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' gesperrt.</p>'}else if(S.tab==='chat'&&!c.priv){
+    var m=mem(c,myId());
+    body='<div class="chat" id="chat">'+((CH[c.id]||[]).map(function(x){var me=x.id===myId();return '<div class="msg'+(me?' me':'')+'">'+(me?'':'<b>'+esc(x.name)+'</b>')+esc(x.text)+((me||myRole(c)==='owner'||myRole(c)==='admin')?'<div><button class="link" style="padding:2px 0;font-size:.8rem" aria-label="Nachricht löschen" onclick="delMsg(\''+x._id+'\')">löschen</button></div>':'')+'</div>'}).join('')||'<p class="empty">Noch keine Nachrichten. Schreib die erste.</p>')+'</div>'+
+    (m.muted?'<p class="empty">Du bist in dieser Klasse stummgeschaltet.</p>':'<div class="row"><input id="mt" placeholder="Nachricht schreiben" onkeydown="if(event.key===\'Enter\')send()"><button onclick="send()">Senden</button></div>');
+  }else if(S.tab==='mem'&&!c.priv){
+    body=(myRole(c)==='owner'?'<div class="card"><small>Klassencode (nur für dich sichtbar)</small><span class="code">'+esc(c.code)+'</span><small>Gib den Code weiter, damit andere beitreten können.</small></div>':'')+
+    '<p class="who">'+c.members.length+' Mitglieder</p>'+c.members.map(function(m){var t=(m.role==='owner'?'<span class="tag">Besitzer</span>':m.role==='admin'?'<span class="tag">Admin</span>':'')+(m.muted?'<span class="tag">stumm</span>':'')+(m.bannedUntil>Date.now()?'<span class="tag">gesperrt bis '+new Date(m.bannedUntil).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span>':'');
+      return '<div class="card mem" oncontextmenu="menu(event,\''+m.id+'\')"><span><b'+(m.role!=='member'?' style="color:#FF7A6B"':'')+'>'+esc(m.name)+'</b>'+(m.id===myId()?' <small>(du)</small>':'')+t+'</span>'+(canManage(c,m)?'<button class="ghost ico" aria-label="Optionen für '+esc(m.name)+'" onclick="menu(event,\''+m.id+'\')">⋮</button>':'')+'</div>'}).join('')+(myRole(c)==='owner'||myRole(c)==='admin'?(delAsk===c.id?'<div class="card"><p class="err">Klasse wirklich löschen? Hausaufgaben und Chat gehen verloren.</p><button class="full" style="background:#FF7A6B" onclick="delCls()">Ja, endgültig löschen</button><button class="ghost full" onclick="go(function(){delAsk=null})">Abbrechen</button></div>':'<button class="ghost full" style="color:#FF7A6B;margin-top:12px" onclick="go(function(){delAsk=S.cur})">Klasse löschen</button>'):'');
+  }else{
+    var stt=stateOf(),dn=function(h){return c.priv?!!h.done:!!stt.done[h.id]};var hw=(c.hw||[]).filter(function(h){return !(p.hideDone&&dn(h))&&(c.priv||!stt.hidden[h.id])});
+    body=hw.map(function(h){return '<div class="card hw'+(dn(h)?' done':'')+'"><input type="checkbox" aria-label="Erledigt" '+(dn(h)?'checked':'')+' onchange="toggleHw(\''+h.id+'\')"><div class="t"><span class="fach">'+esc(h.fach)+'</span><br>'+esc(h.text)+(h.due?'<div class="due">Fällig: '+esc(h.due)+'</div>':'')+'</div><button class="ghost ico" style="margin-left:auto" aria-label="Für mich löschen" onclick="delHw(\''+h.id+'\')">🗑</button></div>'}).join('')||'<p class="empty">Keine Hausaufgaben zu sehen.</p>';
+    body+='<div class="card"><h2>Hausaufgabe eintragen</h2><input id="hf" placeholder="Fach"><input id="ht" placeholder="Was ist zu tun?"><input id="hd" type="date"><button class="full" onclick="addHw()">Hausaufgabe speichern</button></div>';
+  }
+  var tabs=(c.priv||bn)?'':'<div class="tabs">'+[['hw','Hausaufgaben'],['chat','Chat'],['mem','Mitglieder']].map(function(t){return '<button class="'+(S.tab===t[0]?'on':'')+'" onclick="go(function(){S.tab=\''+t[0]+'\'})">'+t[1]+'</button>'}).join('')+'</div>';
+  a.innerHTML=head+'<div class="top"><h2 style="margin:0">'+esc(c.name)+(c.priv?' <small>(privat)</small>':'')+'</h2><button class="ghost" onclick="go(function(){S.cur=null})">Alle Klassen</button></div>'+tabs+body;
+  var ch=document.getElementById('chat');if(ch)ch.scrollTop=ch.scrollHeight;
+}
+function renderSet(a){
+  var p=P(),th=[['grau','Dunkelgrau'],['schwarz','Schwarz'],['hell','Hell']],ac=[['#7AA2FF','Blau'],['#6FD08C','Grün'],['#FFB454','Orange'],['#FF8FB1','Pink']];
+  a.innerHTML='<div class="top"><h2 style="margin:0">Einstellungen</h2><button class="ghost" onclick="go(function(){S.set=false})">Zurück</button></div>'+E()+
+  '<div class="card"><h2>Profil</h2><input id="un" value="'+esc(S.user.name)+'" placeholder="Benutzername"><button class="full" onclick="rename()">Benutzername speichern</button></div>'+
+  '<div class="card"><h2>Design</h2><div class="opts">'+th.map(function(t){return '<button class="'+(p.theme===t[0]?'on':'')+'" onclick="setPref(\'theme\',\''+t[0]+'\')">'+t[1]+'</button>'}).join('')+'</div><div class="opts">'+ac.map(function(t){return '<button class="sw'+(p.accent===t[0]?' on':'')+'" style="background:'+t[0]+'" aria-label="Akzentfarbe '+t[1]+'" onclick="setPref(\'accent\',\''+t[0]+'\')"></button>'}).join('')+'</div>'+
+  '<label class="chk"><input type="checkbox" '+(p.big?'checked':'')+' onchange="setPref(\'big\',this.checked)">Große Schrift</label><label class="chk"><input type="checkbox" '+(p.hideDone?'checked':'')+' onchange="setPref(\'hideDone\',this.checked)">Erledigte Hausaufgaben ausblenden</label></div>'+
+  '<div class="card"><h2>Neue Klasse</h2><input id="cn" placeholder="Name, z. B. 3B"><button class="full" onclick="addCls()">Klasse erstellen</button></div>'+
+  '<div class="card"><h2>Klasse beitreten</h2><input id="jc" placeholder="Klassencode" maxlength="6" autocapitalize="characters"><button class="full" onclick="join()">Beitreten</button></div>'+
+  '<div class="card"><h2>Konto</h2><small>E-Mail</small><p style="margin:2px 0 12px"><b>'+(S.user.anon?'Anonym (keine E-Mail)':esc(S.user.email))+'</b></p>'+(S.user.anon?'':'<small>Passwort</small><p style="margin:2px 0 4px"><b>••••••••</b></p><p class="who">Das Passwort wird nur verschlüsselt gespeichert und kann nicht angezeigt werden. Du kannst aber ein neues festlegen.</p><input id="np" type="password" placeholder="Neues Passwort (mind. 6 Zeichen)" autocomplete="new-password"><label class="chk"><input type="checkbox" onchange="document.getElementById(\'np\').type=this.checked?\'text\':\'password\'">Eingabe anzeigen</label><button class="full" onclick="changePw()">Passwort ändern</button>')+'</div>'+
+  '<button class="ghost full" onclick="logout()">Abmelden</button>';
+}
+function menu(ev,id){ev.preventDefault();var c=cls(),m=mem(c,id);if(!canManage(c,m))return;var el=document.getElementById('menu');
+  el.innerHTML='<button onclick="act(\''+id+'\',\'admin\')">'+(m.role==='admin'?'Adminrechte entziehen':'Adminrechte geben')+'</button><button onclick="act(\''+id+'\',\'mute\')">'+(m.muted?'Stummschaltung aufheben':'Stummschalten')+'</button>'+(m.bannedUntil>Date.now()?'<button onclick="act(\''+id+'\',\'unban\')">Sperre aufheben</button>':[['1 Stunde',3600000],['1 Tag',86400000],['1 Woche',604800000],['1 Monat',2592000000]].map(function(o){return '<button onclick="act(\''+id+'\',\'ban\','+o[1]+')">Sperren: '+o[0]+'</button>'}).join(''))+'<button class="bad" onclick="act(\''+id+'\',\'kick\')">Entfernen</button>';
+  el.style.display='block';el.style.left=Math.max(8,Math.min(ev.clientX,innerWidth-220))+'px';el.style.top=Math.min(ev.clientY,innerHeight-330)+'px'}
+function closeMenu(){var e=document.getElementById('menu');if(e)e.style.display='none'}
+document.addEventListener('click',function(e){if(!e.target.closest('#menu')&&!e.target.closest('.mem button'))closeMenu()});
+function soft(){var a=document.activeElement;if(a&&a.tagName==='INPUT'&&a.type!=='checkbox'&&a.value)return;render()}
+function upd(c,f){Object.assign(c,f);render();if(!DB)return fail('Keine Verbindung zum Speicher.');var p=c.priv?DB.collection('data/users/'+CID).doc('priv-'+myId()).set({hw:f.hw}):DB.doc('classes/'+c.id).update(f);p.catch(function(){fail('Speichern hat nicht geklappt.')})}
+async function sha(t){var b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));return Array.from(new Uint8Array(b)).map(function(x){return x.toString(16).padStart(2,'0')}).join('')}
+function act(id,what,dur){var c=cls(),m=mem(c,id);closeMenu();if(!canManage(c,m))return;
+  var ms=c.members.map(function(x){return Object.assign({},x)}),t=ms.find(function(x){return x.id===id});
+  if(what==='admin'){if(myRole(c)!=='owner')return;t.role=t.role==='admin'?'member':'admin'}
+  else if(what==='mute')t.muted=!t.muted;
+  else if(what==='ban')t.bannedUntil=Date.now()+dur;
+  else if(what==='unban')t.bannedUntil=0;
+  else ms=ms.filter(function(x){return x.id!==id});
+  upd(c,{members:ms})}
+async function reg(){var n=val('nm'),e=val('em').toLowerCase(),p=document.getElementById('pw').value;
+  if(!n)return fail('Bitte gib einen Benutzernamen ein.');
+  if(!/^\S+@\S+\.\S+$/.test(e))return fail('Bitte gib eine gültige E-Mail ein.');
+  if(p.length<6)return fail('Das Passwort braucht mindestens 6 Zeichen.');
+  if(!DB)return fail('Keine Verbindung zum Speicher.');
+  try{var d=await DB.doc('accounts/'+await sha(e)).get()}catch(x){return fail('Keine Verbindung zum Speicher.')}
+  if(d.exists)return fail('Diese E-Mail ist schon registriert. Bitte melde dich an.');
+  go(function(){S.pend={name:n,email:e,pw:p,code:String(Math.floor(100000+Math.random()*900000))};S.auth='verify'})}
+async function verify(){if(val('cd')!==S.pend.code)return fail('Der Code stimmt nicht.');
+  var p=S.pend,salt=uid()+uid(),u={id:'u-'+uid(),name:p.name,email:p.email,salt:salt,hash:await sha(salt+p.pw),prefs:{}};
+  try{await DB.doc('accounts/'+await sha(p.email)).set(u)}catch(x){return fail('Registrierung hat nicht geklappt.')}
+  go(function(){S.user={id:u.id,name:u.name,email:u.email,anon:false};S.pend=null;S.auth='login'})}
+async function login(){var e=val('em').toLowerCase(),pw=document.getElementById('pw').value;
+  if(!DB)return fail('Keine Verbindung zum Speicher.');
+  try{var d=await DB.doc('accounts/'+await sha(e)).get();var u=d.exists&&d.data();var okp=u&&await sha(u.salt+pw)===u.hash}catch(x){return fail('Keine Verbindung zum Speicher.')}
+  if(!okp)return fail('E-Mail oder Passwort stimmt nicht.');
+  go(function(){S.prefs[u.id]=u.prefs||{};S.user={id:u.id,name:u.name,email:u.email,anon:false}})}
+function delMsg(id){if(!DB)return fail('Keine Verbindung zum Speicher.');DB.doc('chat/'+id).delete().catch(function(){fail('Löschen hat nicht geklappt.')})}
+async function changePw(){var pw=document.getElementById('np').value;if(pw.length<6)return fail('Das Passwort braucht mindestens 6 Zeichen.');if(!DB)return fail('Keine Verbindung zum Speicher.');var salt=uid()+uid();try{await DB.doc('accounts/'+await sha(S.user.email)).update({salt:salt,hash:await sha(salt+pw)});go(function(){ok='Passwort geändert.'})}catch(x){fail('Speichern hat nicht geklappt.')}}
+function anon(){go(function(){S.user={id:'a-'+uid(),name:'Gast-'+Math.floor(1000+Math.random()*9000),anon:true}})}
+function logout(){go(function(){S.user=null;S.cur=null;S.set=false})}
+async function rename(){var n=val('un');if(!n)return fail('Der Benutzername darf nicht leer sein.');var id=myId(),em=S.user.email,an=S.user.anon;
+  go(function(){S.user.name=n;ok='Benutzername gespeichert.'});if(!DB)return;
+  try{if(!an)await DB.doc('accounts/'+await sha(em)).update({name:n});
+  S.classes.forEach(function(c){if(mem(c,id))DB.doc('classes/'+c.id).update({members:c.members.map(function(m){return m.id===id?Object.assign({},m,{name:n}):m})})})}catch(x){fail('Speichern hat nicht geklappt.')}}
+async function addCls(){var n=val('cn');if(!n)return fail('Bitte gib einen Klassennamen ein.');if(!DB)return fail('Keine Verbindung zum Speicher.');
+  try{var r=await DB.collection('classes').add({name:n,code:mkcode(),hw:[],members:[{id:myId(),name:S.user.name,role:'owner',muted:false}]});go(function(){S.cur=r.id;S.tab='mem';S.set=false})}catch(x){fail('Klasse erstellen hat nicht geklappt.')}}
+function join(){var cd=val('jc').toUpperCase(),c=S.classes.find(function(k){return k.code===cd});
+  if(!c)return fail('Diesen Klassencode gibt es nicht.');
+  if(mem(c,myId()))return fail('Du bist schon in dieser Klasse.');
+  upd(c,{members:c.members.concat([{id:myId(),name:S.user.name,role:'member',muted:false}])});go(function(){S.cur=c.id;S.tab='hw';S.set=false})}
+async function delCls(){var c=cls();if(!c||c.priv||(myRole(c)!=='owner'&&myRole(c)!=='admin'))return;if(!DB)return fail('Keine Verbindung zum Speicher.');
+  try{var q=await DB.collection('chat').where('classId','==',c.id).get();await Promise.all(q.docs.map(function(d){return DB.doc('chat/'+d.id).delete()}));await DB.doc('classes/'+c.id).delete();go(function(){delAsk=null;S.cur=null})}catch(x){fail('Löschen hat nicht geklappt.')}}
+function openCls(id){go(function(){S.cur=id;S.tab='hw'})}
+function addHw(){var f=val('hf'),t=val('ht'),c=cls();if(!f||!t)return;upd(c,{hw:[{id:uid(),fach:f,text:t,due:val('hd'),done:false}].concat(c.hw||[])})}
+function stateOf(){var s=PRIVS['state-'+myId()]||{};return{done:Object.assign({},s.done),hidden:Object.assign({},s.hidden)}}
+function saveState(s){if(!DB)return fail('Keine Verbindung zum Speicher.');PRIVS['state-'+myId()]=s;render();DB.collection('data/users/'+CID).doc('state-'+myId()).set(s).catch(function(){fail('Speichern hat nicht geklappt.')})}
+function toggleHw(id){var c=cls();if(c.priv)return upd(c,{hw:(c.hw||[]).map(function(h){return h.id===id?Object.assign({},h,{done:!h.done}):h})});var s=stateOf();s.done[id]=!s.done[id];saveState(s)}
+function delHw(id){var c=cls();if(c.priv)return upd(c,{hw:(c.hw||[]).filter(function(h){return h.id!==id})});var s=stateOf();s.hidden[id]=true;saveState(s)}
+function send(){var t=val('mt'),c=cls();if(!t||mem(c,myId()).muted||mem(c,myId()).bannedUntil>Date.now()||!DB)return;document.getElementById('mt').value='';DB.collection('chat').add({classId:c.id,id:myId(),name:S.user.name,text:t,ts:Date.now()}).catch(function(){fail('Nachricht konnte nicht gesendet werden.')})}
+(async function(){try{DB=await claude.use('db');var u=await claude.use('user');CID=u?await u.id():null}catch(e){}
+  if(DB&&CID){
+    DB.collection('classes').onSnapshot(function(q){S.classes=q.docs.map(function(d){return Object.assign({id:d.id},d.data())});soft()});
+    DB.collection('chat').onSnapshot(function(q){CH={};q.docs.map(function(d){return Object.assign({_id:d.id},d.data())}).sort(function(a,b){return a.ts-b.ts}).forEach(function(m){(CH[m.classId]=CH[m.classId]||[]).push(m)});soft()});
+    DB.collection('data/users/'+CID).onSnapshot(function(q){PRIVS={};q.docs.forEach(function(d){PRIVS[d.id]=d.data()});soft()});
+  }else DB=null;
+  render()})();
+render();
+</script>
+</body>
+</html>
